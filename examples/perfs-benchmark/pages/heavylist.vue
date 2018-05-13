@@ -24,16 +24,16 @@
 </template>
 
 <script>
-import axios from 'axios';
+import axios from 'axios'
 import HeaderNav from '~/components/HeaderNav.vue'
 
 export default {
   components: {
-    HeaderNav,
+    HeaderNav
   },
   async asyncData() {
     let { data } = await axios.get(`https://jsonplaceholder.typicode.com/photos`)
     return { items: data }
-  },
+  }
 }
 </script>

@@ -1,26 +1,12 @@
 {
   "name": "perfs-benchmark",
-  "version": "1.0.0",
-  "description": "A comparison of the performance of a nuxt project",
-  "author": "Benoît Emile <emile.b.fr@gmail.com>",
-  "private": true,
   "scripts": {
     "dev": "nuxt",
     "build": "nuxt build",
-    "start": "nuxt start",
-    "generate": "nuxt generate",
-    "lint": "eslint --ext .js,.vue --ignore-path .gitignore .",
-    "precommit": "npm run lint"
+    "start": "nuxt start"
   },
   "dependencies": {
     "axios": "^0.18.0",
-    "nuxt": "^1.0.0"
-  },
-  "devDependencies": {
-    "babel-eslint": "^8.2.1",
-    "eslint": "^4.15.0",
-    "eslint-friendly-formatter": "^3.0.0",
-    "eslint-loader": "^1.7.1",
-    "eslint-plugin-vue": "^4.0.0"
+    "nuxt": "git://github.com/benoitemile/nuxt.js#feature/promisify-nuxt"
   }
 }

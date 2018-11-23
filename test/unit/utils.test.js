@@ -1,4 +1,6 @@
-import { Utils } from '../utils'
+import path from 'path'
+import { waitUntil } from '../utils'
+import * as Utils from '../../packages/common/src/index'
 
 describe('utils', () => {
   test('encodeHtml', () => {
@@ -7,7 +9,7 @@ describe('utils', () => {
   })
 
   test('getContext', () => {
-    let ctx = Utils.getContext({ a: 1 }, { b: 2 })
+    const ctx = Utils.getContext({ a: 1 }, { b: 2 })
     expect(Utils.getContext.length).toBe(2)
     expect(typeof ctx.req).toBe('object')
     expect(typeof ctx.res).toBe('object')
@@ -16,10 +18,20 @@ describe('utils', () => {
   })
 
   test('waitFor', async () => {
-    let s = Date.now()
-    await Utils.waitFor(100)
-    expect(Date.now() - s >= 100).toBe(true)
+    const delay = 100
+    const s = process.hrtime()
+    await Utils.waitFor(delay)
+    const t = process.hrtime(s)
+    // Node.js makes no guarantees about the exact timing of when callbacks will fire
+    // HTML5 specifies a minimum delay of 4ms for timeouts
+    // although arbitrary, use this value to determine our lower limit
+    expect((t[0] * 1e9 + t[1]) / 1e6).not.toBeLessThan(delay - 4)
     await Utils.waitFor()
+  })
+
+  test('waitUntil', async () => {
+    expect(await waitUntil(() => true, 0.1, 100)).toBe(false)
+    expect(await waitUntil(() => false, 0.1, 100)).toBe(true)
   })
 
   test('timeout (promise)', async () => {
@@ -55,7 +67,7 @@ describe('utils', () => {
     const array = [1]
     const promise = Utils.promisifyRoute(array)
     expect(typeof promise).toBe('object')
-    return promise.then(res => {
+    return promise.then((res) => {
       expect(res).toBe(array)
     })
   })
@@ -67,7 +79,7 @@ describe('utils', () => {
     }
     const promise = Utils.promisifyRoute(fn)
     expect(typeof promise).toBe('object')
-    return promise.then(res => {
+    return promise.then((res) => {
       expect(res).toBe(array)
     })
   })
@@ -75,27 +87,27 @@ describe('utils', () => {
   test('promisifyRoute (fn => promise)', () => {
     const array = [1, 2, 3]
     const fn = function () {
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         resolve(array)
       })
     }
     const promise = Utils.promisifyRoute(fn)
     expect(typeof promise).toBe('object')
-    return promise.then(res => {
+    return promise.then((res) => {
       expect(res).toBe(array)
     })
   })
 
   test('promisifyRoute ((fn(args) => promise))', () => {
     const fn = function (array) {
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         resolve(array)
       })
     }
     const array = [1, 2, 3]
     const promise = Utils.promisifyRoute(fn, array)
     expect(typeof promise).toBe('object')
-    return promise.then(res => {
+    return promise.then((res) => {
       expect(res).toBe(array)
     })
   })
@@ -106,7 +118,7 @@ describe('utils', () => {
     }
     const promise = Utils.promisifyRoute(fn)
     expect(typeof promise).toBe('object')
-    return promise.catch(e => {
+    return promise.catch((e) => {
       expect(e.message).toBe('Error here')
     })
   })
@@ -118,7 +130,7 @@ describe('utils', () => {
     const array = [1, 2, 3, 4]
     const promise = Utils.promisifyRoute(fn, array)
     expect(typeof promise).toBe('object')
-    return promise.catch(e => {
+    return promise.catch((e) => {
       expect(e.message).toBe('Error here: ' + array.join())
     })
   })
@@ -130,7 +142,7 @@ describe('utils', () => {
     }
     const promise = Utils.promisifyRoute(fn)
     expect(typeof promise).toBe('object')
-    return promise.then(res => {
+    return promise.then((res) => {
       expect(res).toBe(array)
     })
   })
@@ -143,7 +155,7 @@ describe('utils', () => {
     const object = { a: 1 }
     const promise = Utils.promisifyRoute(fn, array, object)
     expect(typeof promise).toBe('object')
-    return promise.then(res => {
+    return promise.then((res) => {
       expect(res.array).toBe(array)
       expect(res.object).toBe(object)
     })
@@ -215,6 +227,67 @@ describe('utils', () => {
       }
     ])
     expect(routes).toMatchObject([ '/login', '/about', '', '/post' ])
+  })
+
+  describe('relativeTo', () => {
+    const path1 = path.join(path.sep, 'foo', 'bar')
+    const path2 = path.join(path.sep, 'foo', 'baz')
+
+    test('makes path relative to dir', () => {
+      expect(Utils.relativeTo(path1, path2)).toBe(Utils.wp(`..${path.sep}baz`))
+    })
+
+    test('keeps webpack inline loaders prepended', () => {
+      expect(Utils.relativeTo(path1, `loader1!loader2!${path2}`))
+        .toBe(Utils.wp(`loader1!loader2!..${path.sep}baz`))
+    })
+  })
+
+  describe('guardDir', () => {
+    test('Parent dir is guarded', () => {
+      expect(() => {
+        Utils.guardDir({
+          dir1: '/root/parent',
+          dir2: '/root'
+        }, 'dir1', 'dir2')
+      }).toThrow()
+    })
+
+    test('Same dir is guarded', () => {
+      expect(() => {
+        Utils.guardDir({
+          dir1: '/root/parent',
+          dir2: '/root/parent'
+        }, 'dir1', 'dir2')
+      }).toThrow()
+    })
+
+    test('Same level dir is not guarded', () => {
+      expect(() => {
+        Utils.guardDir({
+          dir1: '/root/parent-next',
+          dir2: '/root/parent'
+        }, 'dir1', 'dir2')
+      }).not.toThrow()
+    })
+
+    test('Same level dir is not guarded 2', () => {
+      expect(() => {
+        Utils.guardDir({
+          dir1: '/root/parent',
+          dir2: '/root/parent-next'
+        }, 'dir1', 'dir2')
+      }).not.toThrow()
+    })
+
+    test('Child dir is not guarded', () => {
+      expect(() => {
+        Utils.guardDir({
+          dir1: '/root/parent',
+          dir2: '/root/parent/child'
+        }, 'dir1', 'dir2')
+      }).not.toThrow()
+    })
   })
 })
 

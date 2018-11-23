@@ -1,7 +1,13 @@
 import path from 'path'
+import compression from 'compression'
 
 export default {
+  mode: 'unknown',
   srcDir: __dirname,
+  server: {
+    port: 8000,
+    host: '0.0.0.0'
+  },
   router: {
     base: '/test/',
     middleware: 'noop',
@@ -16,6 +22,9 @@ export default {
         {
           path: '/redirect/about-bis',
           redirect: '/about-bis'
+        },
+        {
+          path: '/not-existed'
         }
       ]
     }
@@ -24,10 +33,9 @@ export default {
   transition: 'test',
   layoutTransition: 'test',
   loadingIndicator: 'circle',
-  offline: true,
   extensions: 'ts',
   plugins: [
-    '~/plugins/test.js',
+    '~/plugins/test',
     { src: '~/plugins/only-client.js', ssr: false }
   ],
   loading: '~/components/loading',
@@ -46,7 +54,6 @@ export default {
   },
   build: {
     publicPath: '/orion/',
-    maxChunkSize: 300000,
     cssSourceMap: true,
     parallel: true,
     analyze: {
@@ -55,13 +62,14 @@ export default {
       logLevel: 'error'
     },
     styleResources: {
-      scss: '~/assets/pre-process.scss'
+      css: './assets/pre-process.css'
     },
     babel: {
       presets({ isServer }) {
         return null // Coverage: Return null, so defaults will be used.
       }
     },
+    transpile: 'vue-test',
     extend(config, options) {
       return Object.assign({}, config, {
         devtool: 'nosources-source-map'
@@ -80,8 +88,13 @@ export default {
         return ['script', 'style', 'font'].includes(type)
       }
     },
+    compressor: function damn(...args) { return compression({ threshold: 9 })(...args) },
     static: {
       maxAge: '1y'
     }
+  },
+  globalName: 'noxxt',
+  globals: {
+    id: 'custom-nuxt-id'
   }
 }

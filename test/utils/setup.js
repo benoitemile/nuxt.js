@@ -1,10 +1,12 @@
-// eslint-disable
-require('babel-polyfill')
+import consola from 'consola'
+import chalk from 'chalk'
 
-const consola = require('consola')
+const isWin = process.platform === 'win32'
+describe.skip.win = isWin ? describe.skip : describe
+test.skip.win = isWin ? test.skip : test
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 60 * 1000
+chalk.enabled = false
 
-consola.clear().add({
-  log: jest.fn()
-})
+jest.setTimeout(60000)
+
+consola.mockTypes(() => jest.fn())

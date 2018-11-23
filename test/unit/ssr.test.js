@@ -1,5 +1,6 @@
+
 import { uniq } from 'lodash'
-import { loadFixture, getPort, Nuxt, Utils, rp } from '../utils'
+import { loadFixture, getPort, Nuxt, rp, sequence, parallel } from '../utils'
 
 let port
 let nuxt = null
@@ -19,15 +20,15 @@ const url = route => 'http://localhost:' + port + route
 // We strictly compare <foorbar>{id}</foorbar> section
 // Because other response parts such as window.__NUXT may be different resulting false positive passes.
 const uniqueTest = async (url) => {
-  let results = []
+  const results = []
 
-  await Utils.parallel(range(5), async () => {
-    let { html } = await nuxt.renderRoute(url)
-    let foobar = match(FOOBAR_REGEX, html)
+  await parallel(range(5), async () => {
+    const { html } = await nuxt.server.renderRoute(url)
+    const foobar = match(FOOBAR_REGEX, html)
     results.push(parseInt(foobar))
   })
 
-  let isUnique = uniq(results).length === results.length
+  const isUnique = uniq(results).length === results.length
 
   if (!isUnique) {
     /* eslint-disable no-console */
@@ -44,13 +45,13 @@ const uniqueTest = async (url) => {
 // Or pending promises/sockets and function calls.
 // Related issue: https://github.com/nuxt/nuxt.js/issues/1354
 const stressTest = async (_url, concurrency = 2, steps = 4) => {
-  let statusCodes = {}
+  const statusCodes = {}
 
-  await Utils.sequence(range(steps), async () => {
-    await Utils.parallel(range(concurrency), async () => {
-      let response = await rp(url(_url), { resolveWithFullResponse: true })
+  await sequence(range(steps), async () => {
+    await parallel(range(concurrency), async () => {
+      const response = await rp(url(_url), { resolveWithFullResponse: true })
       // Status Code
-      let code = response.statusCode
+      const code = response.statusCode
       if (!statusCodes[code]) {
         statusCodes[code] = 0
       }
@@ -63,10 +64,10 @@ const stressTest = async (_url, concurrency = 2, steps = 4) => {
 
 describe('ssr', () => {
   beforeAll(async () => {
-    const config = loadFixture('ssr')
+    const config = await loadFixture('ssr')
     nuxt = new Nuxt(config)
     port = await getPort()
-    await nuxt.listen(port, 'localhost')
+    await nuxt.server.listen(port, 'localhost')
   })
 
   test('unique responses with data()', async () => {
@@ -95,6 +96,12 @@ describe('ssr', () => {
 
   test('unique responses with fetch', async () => {
     await uniqueTest('/fetch')
+  })
+
+  test('store undefined variable response', async () => {
+    const window = await nuxt.server.renderAndGetWindow(url('/store'))
+    expect('idUndefined' in window.__NUXT__.state).toBe(true)
+    expect(window.__NUXT__.state.idUndefined).toEqual(undefined)
   })
 
   test('stress test with asyncData', async () => {

@@ -5,13 +5,13 @@ const server = http.createServer(this.nuxt.renderer.app)
 const io = socketIO(server)
 
 export default function () {
-  // overwrite nuxt.listen()
-  this.nuxt.listen = (port, host) => new Promise((resolve) => server.listen(port || 3000, host || 'localhost', resolve))
+  // overwrite nuxt.server.listen()
+  this.nuxt.server.listen = (port, host) => new Promise(resolve => server.listen(port || 3000, host || 'localhost', resolve))
   // close this server on 'close' event
-  this.nuxt.hook('close', () => new Promise((resolve) => server.close(resolve)))
+  this.nuxt.hook('close', () => new Promise(server.close))
 
   // Add socket.io events
-  let messages = []
+  const messages = []
   io.on('connection', (socket) => {
     socket.on('last-messages', function (fn) {
       fn(messages.slice(-50))

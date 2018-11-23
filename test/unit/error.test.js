@@ -10,38 +10,39 @@ let nuxt = null
 
 describe('error', () => {
   beforeAll(async () => {
-    const config = loadFixture('error')
+    const config = await loadFixture('error')
     nuxt = new Nuxt(config)
     port = await getPort()
-    await nuxt.listen(port, 'localhost')
+    await nuxt.server.listen(port, 'localhost')
   })
 
   test('/ should display an error', async () => {
-    await expect(nuxt.renderRoute('/')).rejects.toMatchObject({
+    await expect(nuxt.server.renderRoute('/')).rejects.toMatchObject({
       message: expect.stringContaining('not_defined is not defined')
     })
   })
 
   test('/404 should display an error too', async () => {
-    let { error } = await nuxt.renderRoute('/404')
-    expect(error.message.includes('This page could not be found')).toBe(true)
+    const { error } = await nuxt.server.renderRoute('/404')
+    expect(error.message).toContain('This page could not be found')
   })
 
   test('/ with renderAndGetWindow()', async () => {
-    await expect(nuxt.renderAndGetWindow(url('/'))).rejects.toMatchObject({
+    await expect(nuxt.server.renderAndGetWindow(url('/'))).rejects.toMatchObject({
       statusCode: 500
     })
   })
 
-  test('Error: resolvePath()', async () => {
-    expect(() => nuxt.resolvePath()).toThrowError()
-    expect(() => nuxt.resolvePath('@/pages/about.vue')).toThrowError('Cannot resolve "@/pages/about.vue"')
+  test('Error: resolvePath()', () => {
+    expect(() => nuxt.resolver.resolvePath()).toThrowError()
+    expect(() => nuxt.resolver.resolvePath('@/pages/about.vue')).toThrowError('Cannot resolve "@/pages/about.vue"')
   })
 
   test('Error: callHook()', async () => {
+    consola.fatal.mockClear()
+
     const errorHook = jest.fn()
     const error = new Error('test hook error')
-    jest.spyOn(consola, 'error')
 
     nuxt.hook('error', errorHook)
     nuxt.hook('test:error', () => { throw error })
@@ -49,10 +50,8 @@ describe('error', () => {
 
     expect(errorHook).toHaveBeenCalledTimes(1)
     expect(errorHook).toHaveBeenCalledWith(error)
-    expect(consola.error).toHaveBeenCalledTimes(1)
-    expect(consola.error).toHaveBeenCalledWith(error)
-
-    consola.error.mockRestore()
+    expect(consola.fatal).toHaveBeenCalledTimes(1)
+    expect(consola.fatal).toHaveBeenCalledWith(error)
   })
 
   // Close server and ask nuxt to stop listening to file changes

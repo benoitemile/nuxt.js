@@ -1,61 +1,37 @@
 module.exports = {
   root: true,
-  parser: 'babel-eslint',
   parserOptions: {
+    parser: 'babel-eslint',
     sourceType: 'module'
   },
-  env: {
-    browser: true,
-    node: true,
-    'jest/globals': true
-  },
   extends: [
-    'standard',
-    'standard-jsx',
-    'plugin:import/errors',
-    'plugin:import/warnings'
+    '@nuxtjs'
   ],
-  plugins: [
-    'html',
-    'jest'
-  ],
-  settings: {
-    'import/resolver': {
-      node: { extensions: ['.js', '.mjs'] }
+  overrides: [{
+    files: [ 'test/fixtures/*/.nuxt*/**' ],
+    rules: {
+      'vue/name-property-casing': ['error', 'kebab-case']
     }
-  },
-  rules: {
-    // Enforce import order
-    'import/order': 2,
-
-    // Imports should come first
-    'import/first': 2,
-
-    // Other import rules
-    "import/no-mutable-exports": 2,
-
-    // Allow unresolved imports
-    'import/no-unresolved': 0,
-
-    // Allow paren-less arrow functions
-    'arrow-parens': 0,
-
-    // Allow async-await
-    'generator-star-spacing': 0,
-
-    // Allow debugger during development
-    'no-debugger': process.env.NODE_ENV === 'production' ? 2 : 0,
-
-    // Do not allow console.logs etc...
-    'no-console': 2,
-    'space-before-function-paren': [
-			2,
-			{
-				anonymous: 'always',
-				named: 'never'
-			}
-		],
-  },
-
-  globals: {}
+  }, {
+    files: [ 'test/fixtures/*/.nuxt*/**/+(App|index).js' ],
+    rules: {
+      'import/order': 'ignore'
+    }
+  }, {
+    files: [ 'test/fixtures/*/.nuxt*/**/client.js' ],
+    rules: {
+      'no-console': ['error', { allow: ['error'] }]
+    }
+  }, {
+    files: [ 'test/fixtures/*/.nuxt*/**/router.js' ],
+    rules: {
+      'no-console': ['error', { allow: ['warn'] }]
+    }
+  }, {
+    files: [ 'test/fixtures/*/.nuxt*/**/*.html' ],
+    rules: {
+      'semi': ['error', 'always', { 'omitLastInOneLineBlock': true }],
+      'no-var': 'warn'
+    }
+  }]
 }

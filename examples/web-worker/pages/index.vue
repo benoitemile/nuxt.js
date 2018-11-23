@@ -1,7 +1,7 @@
 <template>
   <section class="container">
     <div>
-      <app-logo/>
+      <app-logo />
       <h1 class="title">
         web-worker
       </h1>
@@ -17,22 +17,27 @@
       <div class="links">
         <a
           :class="needWorkerSetup ? 'hidden' : 'visible'"
+          class="button button--green"
           @click="test"
-          class="button button--green">Test Worker</a>
+        >Test Worker</a>
         <a
           :class="needWorkerSetup ? 'hidden' : 'visible'"
+          class="button button--green"
           @click="long(4000)"
-          class="button button--green">Execute long running Worker</a>
+        >Execute long running Worker</a>
         <a
           :class="needWorkerSetup || !longRunningWorkers.length ? 'hidden' : 'visible'"
+          class="button button--green"
           @click="freeWorker"
-          class="button button--green">Free long running Worker</a>
+        >Free long running Worker</a>
         <a
+          class="button button--grey"
           @click="removeWorker"
-          class="button button--grey">Remove Web Worker</a>
+        >Remove Web Worker</a>
         <a
+          class="button button--grey"
           @click="createWorkers"
-          class="button button--grey">Create more Workers</a>
+        >Create more Workers</a>
       </div>
     </div>
   </section>
@@ -45,11 +50,6 @@ export default {
   components: {
     AppLogo
   },
-  computed: {
-    needWorkerSetup () {
-      return this.workers.length === 0 && this.longRunningWorkers.length === 0
-    }
-  },
   data () {
     return {
       notification: '',
@@ -57,6 +57,11 @@ export default {
       workerIndex: 0,
       longRunningWorkers: [],
       longIndex: 0
+    }
+  },
+  computed: {
+    needWorkerSetup () {
+      return this.workers.length === 0 && this.longRunningWorkers.length === 0
     }
   },
   watch: {
@@ -68,27 +73,37 @@ export default {
     test () {
       const worker = this.workers[this.workerIndex++ % this.workers.length]
 
+      if (worker) {
+        worker.onmessage = (event) => {
+          this.notification = event.data.hello
+        }
+      }
+
       if (worker) worker.postMessage({ hello: 'world' })
       else this.notification = 'No more test workers available'
     },
-    long (miliseconds) {
+    long (milliseconds) {
       let worker = this.workers.shift()
 
       if (worker) {
         worker.onmessage = (event) => {
-          console.log(`expensive made ${event.data} loops`)
+          this.notification = `expensive made ${event.data} loops`
+          worker.onmessage = null
+          this.workers.push(...this.longRunningWorkers.splice(this.longRunningWorkers.indexOf(worker), 1))
         }
         this.longRunningWorkers.push(worker)
       } else {
         worker = this.longRunningWorkers[ this.longIndex++ % this.longRunningWorkers.length]
       }
 
-      worker.postMessage({ action: 'expensive', time: miliseconds })
+      worker.postMessage({ action: 'expensive', time: milliseconds })
     },
     freeWorker () {
+      // we can't really free a worker, we can only terminate it and create a new
       const worker = this.longRunningWorkers.pop()
       worker.onmessage = null
-      this.workers.push(worker)
+      worker.terminate()
+      this.workers.push(this.$worker.createWorker())
       this.notification = 'Worker freed'
     },
     removeWorker () {
@@ -102,7 +117,7 @@ export default {
       worker.terminate()
     },
     createWorkers () {
-      if (process.browser) {
+      if (process.client) {
         for(let i = 0, len = navigator.hardwareConcurrency || 1; i < len; i++) {
           this.workers.push(this.$worker.createWorker())
         }

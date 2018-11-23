@@ -11,7 +11,7 @@ let server
 describe('express', () => {
   // Init nuxt.js and create express server
   beforeAll(async () => {
-    const config = loadFixture('basic')
+    const config = await loadFixture('basic')
     nuxt = new Nuxt(config)
 
     port = await getPort()
@@ -29,7 +29,7 @@ describe('express', () => {
   test('/stateless with express', async () => {
     const html = await rp(url('/stateless'))
 
-    expect(html.includes('<h1>My component!</h1>')).toBe(true)
+    expect(html).toContain('<h1>My component!</h1>')
   })
 
   afterAll(async () => {

@@ -1,4 +1,4 @@
-import nodeExternals from 'webpack-node-externals'
+import VuetifyLoaderPlugin from 'vuetify-loader/lib/plugin'
 
 export default {
   /*
@@ -7,21 +7,18 @@ export default {
   */
   head: {
     link: [
-      { rel: 'stylesheet', type: 'text/css', href: 'https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons' }
+      {
+        rel: 'stylesheet',
+        type: 'text/css',
+        href: 'https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons'
+      }
     ]
   },
 
   build: {
+    plugins: [new VuetifyLoaderPlugin()],
     extractCSS: true,
-    extend(config, ctx) {
-      if (ctx.isServer) {
-        config.externals = [
-          nodeExternals({
-            whitelist: [/^vuetify/]
-          })
-        ]
-      }
-    }
+    transpile: ['vuetify/lib']
   },
   /*
   ** Load Vuetify into the app

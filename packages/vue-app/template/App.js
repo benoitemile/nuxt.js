@@ -18,10 +18,10 @@ const layouts = { <%= Object.keys(layouts).map(key => `"_${key}": _${hash(key)}`
 
 export default {
   <%= isTest ? '/* eslint-disable quotes, semi, indent, comma-spacing, key-spacing, object-curly-spacing, object-property-newline, arrow-parens */' : '' %>
-  head: <%= serialize(head).replace(/:\w+\(/gm, ':function(').replace('head(', 'function(') %>,
+  head: <%= serializeFunction(head) %>,
   <%= isTest ? '/* eslint-enable quotes, semi, indent, comma-spacing, key-spacing, object-curly-spacing, object-property-newline, arrow-parens */' : '' %>
   render(h, props) {
-    <% if (loading) { %>const loadingEl = h('nuxt-loading', { ref: 'loading' })<% } %>
+    <% if (loading) { %>const loadingEl = h('NuxtLoading', { ref: 'loading' })<% } %>
     const layoutEl = h(this.layout || 'nuxt')
     const templateEl = h('div', {
       domProps: {
@@ -34,6 +34,14 @@ export default {
       props: {
         name: '<%= layoutTransition.name %>',
         mode: '<%= layoutTransition.mode %>'
+      },
+      on: {
+        beforeEnter(el) {
+          // Ensure to trigger scroll event after calling scrollBehavior
+          window.<%= globals.nuxt %>.$nextTick(() => {
+            window.<%= globals.nuxt %>.$emit('triggerScroll')
+          })
+        }
       }
     }, [ templateEl ])
 
@@ -58,10 +66,7 @@ export default {
     Vue.prototype.<%= globals.nuxt %> = this
     // add to window so we can listen when ready
     if (typeof window !== 'undefined') {
-      window.<%= globals.nuxt %> = this
-      <% if (globals.nuxt !== '$nuxt') { %>
-      window.$nuxt = { $root: { constructor: this.$root.constructor } }
-      <% } %>
+      window.<%= globals.nuxt %> = <%= (globals.nuxt !== '$nuxt' ? 'window.$nuxt = ' : '') %>this
     }
     // Add $nuxt.error()
     this.error = this.nuxt.error
@@ -96,8 +101,8 @@ export default {
     },
     loadLayout(layout) {
       const undef = !layout
-      const inexisting = !(layouts['_' + layout] || resolvedLayouts['_' + layout])
-      let _layout = '_' + ((undef || inexisting) ? 'default' : layout)
+      const nonexistent = !(layouts['_' + layout] || resolvedLayouts['_' + layout])
+      let _layout = '_' + ((undef || nonexistent) ? 'default' : layout)
       if (resolvedLayouts[_layout]) {
         return Promise.resolve(resolvedLayouts[_layout])
       }

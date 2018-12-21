@@ -17,7 +17,8 @@ export default {
         {
           name: 'about-bis',
           path: '/about-bis',
-          component: '~/pages/about.vue'
+          component: '~/pages/about.vue',
+          meta: { text: 'test-meta' }
         },
         {
           path: '/redirect/about-bis',
@@ -36,6 +37,9 @@ export default {
   extensions: 'ts',
   plugins: [
     '~/plugins/test',
+    { src: '~/plugins/test.plugin', mode: 'abc' },
+    '~/plugins/test.client',
+    '~/plugins/test.server',
     { src: '~/plugins/only-client.js', ssr: false }
   ],
   loading: '~/components/loading',
@@ -72,11 +76,11 @@ export default {
     transpile: 'vue-test',
     extend(config, options) {
       return Object.assign({}, config, {
-        devtool: 'nosources-source-map'
+        devtool: '#source-map'
       })
     }
   },
-  css: [{ src: '~/assets/app.css' }],
+  css: [{ src: '~/assets/app.pcss' }],
   render: {
     csp: true,
     http2: {

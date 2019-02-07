@@ -1,14 +1,20 @@
 import { run } from '../../src'
 import getCommand from '../../src/commands'
+import * as utils from '../../src/utils/'
 
 jest.mock('../../src/commands')
 
 describe('cli', () => {
+  beforeAll(() => {
+    // TODO: Below spyOn can be removed in v3 when force-exit is default false
+    jest.spyOn(utils, 'forceExit').mockImplementation(() => {})
+  })
+
   afterEach(() => jest.resetAllMocks())
 
   test('calls expected method', async () => {
     const mockedCommand = {
-      run: jest.fn().mockImplementation(() => Promise.resolve({}))
+      run: jest.fn(() => Promise.resolve({}))
     }
     getCommand.mockImplementationOnce(() => Promise.resolve(mockedCommand))
 

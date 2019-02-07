@@ -17,6 +17,8 @@ import PerfLoader from '../utils/perf-loader'
 import StyleLoader from '../utils/style-loader'
 import WarnFixPlugin from '../plugins/warnfix'
 
+import { reservedVueTags } from '../utils/reserved-tags'
+
 export default class WebpackBaseConfig {
   constructor(builder, options) {
     this.name = options.name
@@ -50,7 +52,7 @@ export default class WebpackBaseConfig {
 
   normalizeTranspile() {
     // include SFCs in node_modules
-    const items = [/\.vue\.js/]
+    const items = [/\.vue\.js/i]
     for (const pattern of this.options.build.transpile) {
       if (pattern instanceof RegExp) {
         items.push(pattern)
@@ -156,6 +158,9 @@ export default class WebpackBaseConfig {
             },
             output: {
               comments: /^\**!|@preserve|@license|@cc_on/
+            },
+            mangle: {
+              reserved: reservedVueTags
             }
           }
         }, this.options.build.terser))
@@ -185,18 +190,22 @@ export default class WebpackBaseConfig {
       this.nuxt,
       { isServer: this.isServer, perfLoader }
     )
+    const babelLoader = {
+      loader: require.resolve('babel-loader'),
+      options: this.getBabelOptions()
+    }
 
     return [
       {
-        test: /\.vue$/,
+        test: /\.vue$/i,
         loader: 'vue-loader',
         options: this.loaders.vue
       },
       {
-        test: /\.pug$/,
+        test: /\.pug$/i,
         oneOf: [
           {
-            resourceQuery: /^\?vue/,
+            resourceQuery: /^\?vue/i,
             use: [{
               loader: 'pug-plain-loader',
               options: this.loaders.pugPlain
@@ -214,33 +223,34 @@ export default class WebpackBaseConfig {
         ]
       },
       {
-        test: /\.jsx?$/,
+        test: /\.jsx?$/i,
         exclude: (file) => {
+          file = file.split('node_modules', 2)[1]
+
           // not exclude files outside node_modules
-          if (!/node_modules/.test(file)) {
+          if (!file) {
             return false
           }
 
           // item in transpile can be string or regex object
           return !this.modulesToTranspile.some(module => module.test(file))
         },
-        use: perfLoader.js().concat({
-          loader: require.resolve('babel-loader'),
-          options: this.getBabelOptions()
-        })
+        use: perfLoader.js().concat(babelLoader)
       },
       {
-        test: /\.ts$/,
-        loader: 'ts-loader',
-        options: this.loaders.ts
-      },
-      {
-        test: /\.tsx$/,
+        test: /\.ts$/i,
         use: [
+          babelLoader,
           {
-            loader: require.resolve('babel-loader'),
-            options: this.getBabelOptions()
-          },
+            loader: 'ts-loader',
+            options: this.loaders.ts
+          }
+        ]
+      },
+      {
+        test: /\.tsx$/i,
+        use: [
+          babelLoader,
           {
             loader: 'ts-loader',
             options: this.loaders.tsx
@@ -248,83 +258,95 @@ export default class WebpackBaseConfig {
         ]
       },
       {
-        test: /\.css$/,
+        test: /\.css$/i,
         oneOf: styleLoader.apply('css')
       },
       {
-        test: /\.p(ost)?css$/,
+        test: /\.p(ost)?css$/i,
         oneOf: styleLoader.apply('postcss')
       },
       {
-        test: /\.less$/,
+        test: /\.less$/i,
         oneOf: styleLoader.apply('less', {
           loader: 'less-loader',
           options: this.loaders.less
         })
       },
       {
-        test: /\.sass$/,
+        test: /\.sass$/i,
         oneOf: styleLoader.apply('sass', {
           loader: 'sass-loader',
           options: this.loaders.sass
         })
       },
       {
-        test: /\.scss$/,
+        test: /\.scss$/i,
         oneOf: styleLoader.apply('scss', {
           loader: 'sass-loader',
           options: this.loaders.scss
         })
       },
       {
-        test: /\.styl(us)?$/,
+        test: /\.styl(us)?$/i,
         oneOf: styleLoader.apply('stylus', {
           loader: 'stylus-loader',
           options: this.loaders.stylus
         })
       },
       {
-        test: /\.(png|jpe?g|gif|svg|webp)$/,
-        use: perfLoader.asset().concat({
+        test: /\.(png|jpe?g|gif|svg|webp)$/i,
+        use: [{
           loader: 'url-loader',
           options: Object.assign(
             this.loaders.imgUrl,
             { name: this.getFileName('img') }
           )
-        })
+        }]
       },
       {
-        test: /\.(woff2?|eot|ttf|otf)(\?.*)?$/,
-        use: perfLoader.asset().concat({
+        test: /\.(woff2?|eot|ttf|otf)(\?.*)?$/i,
+        use: [{
           loader: 'url-loader',
           options: Object.assign(
             this.loaders.fontUrl,
             { name: this.getFileName('font') }
           )
-        })
+        }]
       },
       {
-        test: /\.(webm|mp4|ogv)$/,
-        use: perfLoader.asset().concat({
+        test: /\.(webm|mp4|ogv)$/i,
+        use: [{
           loader: 'file-loader',
           options: Object.assign(
             this.loaders.file,
             { name: this.getFileName('video') }
           )
-        })
+        }]
       }
     ]
   }
 
   plugins() {
-    const plugins = [new VueLoader.VueLoaderPlugin()]
-
-    Array.prototype.push.apply(plugins, this.options.build.plugins || [])
+    const plugins = []
 
     // Add timefix-plugin before others plugins
     if (this.options.dev) {
-      plugins.unshift(new TimeFixPlugin())
+      plugins.push(new TimeFixPlugin())
     }
+
+    // CSS extraction)
+    if (this.options.build.extractCSS) {
+      plugins.push(new ExtractCssChunksPlugin(Object.assign({
+        filename: this.getFileName('css'),
+        chunkFilename: this.getFileName('css'),
+        // TODO: https://github.com/faceyspacey/extract-css-chunks-webpack-plugin/issues/132
+        reloadAll: true
+      }, this.options.build.extractCSS)))
+    }
+
+    plugins.push(new VueLoader.VueLoaderPlugin())
+
+    Array.prototype.push.apply(plugins, this.options.build.plugins || [])
 
     // Hide warnings about plugins without a default export (#1179)
     plugins.push(new WarnFixPlugin())
@@ -359,16 +381,6 @@ export default class WebpackBaseConfig {
         }
       }
     }))
-
-    // CSS extraction)
-    if (this.options.build.extractCSS) {
-      plugins.push(new ExtractCssChunksPlugin(Object.assign({
-        filename: this.getFileName('css'),
-        chunkFilename: this.getFileName('css'),
-        // TODO: https://github.com/faceyspacey/extract-css-chunks-webpack-plugin/issues/132
-        reloadAll: true
-      }, this.options.build.extractCSS)))
-    }
 
     if (this.options.build.hardSource) {
       plugins.push(new HardSourcePlugin(Object.assign({}, this.options.build.hardSource)))

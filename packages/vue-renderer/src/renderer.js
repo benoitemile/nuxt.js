@@ -52,14 +52,17 @@ export default class VueRenderer {
 
   renderScripts(context) {
     if (this.context.options.modern === 'client') {
-      const publicPath = this.context.options.build.publicPath
+      const { publicPath, crossorigin } = this.context.options.build
       const scriptPattern = /<script[^>]*?src="([^"]*?)"[^>]*?>[^<]*?<\/script>/g
       return context.renderScripts().replace(scriptPattern, (scriptTag, jsFile) => {
         const legacyJsFile = jsFile.replace(publicPath, '')
         const modernJsFile = this.assetsMapping[legacyJsFile]
-        const crossorigin = this.context.options.build.crossorigin
         const cors = `${crossorigin ? ` crossorigin="${crossorigin}"` : ''}`
-        const moduleTag = scriptTag.replace('<script', `<script type="module"${cors}`).replace(legacyJsFile, modernJsFile)
+        const moduleTag = modernJsFile
+          ? scriptTag
+            .replace('<script', `<script type="module"${cors}`)
+            .replace(legacyJsFile, modernJsFile)
+          : ''
         const noModuleTag = scriptTag.replace('<script', `<script nomodule${cors}`)
         return noModuleTag + moduleTag
       })
@@ -90,12 +93,14 @@ export default class VueRenderer {
 
   renderResourceHints(context) {
     if (this.context.options.modern === 'client') {
-      const publicPath = this.context.options.build.publicPath
+      const { publicPath, crossorigin } = this.context.options.build
       const linkPattern = /<link[^>]*?href="([^"]*?)"[^>]*?as="script"[^>]*?>/g
       return context.renderResourceHints().replace(linkPattern, (linkTag, jsFile) => {
         const legacyJsFile = jsFile.replace(publicPath, '')
         const modernJsFile = this.assetsMapping[legacyJsFile]
-        const crossorigin = this.context.options.build.crossorigin
+        if (!modernJsFile) {
+          return ''
+        }
         const cors = `${crossorigin ? ` crossorigin="${crossorigin}"` : ''}`
         return linkTag.replace('rel="preload"', `rel="modulepreload"${cors}`).replace(legacyJsFile, modernJsFile)
       })
@@ -138,7 +143,7 @@ export default class VueRenderer {
   loadResources(_fs, isMFS = false) {
     const distPath = path.resolve(this.context.options.buildDir, 'dist', 'server')
     const updated = []
-    const resourceMap = this.resourceMap
+    const { resourceMap } = this
 
     const readResource = (fileName, encoding) => {
       try {

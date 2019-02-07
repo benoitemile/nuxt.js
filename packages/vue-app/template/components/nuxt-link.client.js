@@ -1,4 +1,3 @@
-<%= isTest ? '// @vue/component' : '' %>
 import Vue from 'vue'
 
 const requestIdleCallback = window.requestIdleCallback ||
@@ -9,11 +8,11 @@ const requestIdleCallback = window.requestIdleCallback ||
         didTimeout: false,
         timeRemaining: function () {
           return Math.max(0, 50 - (Date.now() - start))
-        },
+        }
       })
     }, 1)
   }
-const observer = window.IntersectionObserver && new window.IntersectionObserver(entries => {
+const observer = window.IntersectionObserver && new window.IntersectionObserver((entries) => {
   entries.forEach(({ intersectionRatio, target: link }) => {
     if (intersectionRatio <= 0) {
       return
@@ -22,9 +21,10 @@ const observer = window.IntersectionObserver && new window.IntersectionObserver(
   })
 })
 
+<%= isTest ? '// @vue/component' : '' %>
 export default {
-  extends: Vue.component('RouterLink'),
   name: 'NuxtLink',
+  extends: Vue.component('RouterLink'),
   props: {
     noPrefetch: {
       type: Boolean,
@@ -66,15 +66,15 @@ export default {
     },
     canPrefetch() {
       const conn = navigator.connection
-      const hasBadConnection = this.$nuxt.isOffline || (conn && ((conn.effectiveType || '').includes('2g') || conn.saveData))
+      const hasBadConnection = this.<%= globals.nuxt %>.isOffline || (conn && ((conn.effectiveType || '').includes('2g') || conn.saveData))
 
       return !hasBadConnection
     },
     getPrefetchComponents() {
       const ref = this.$router.resolve(this.to, this.$route, this.append)
-      const Components = ref.resolved.matched.map((r) => r.components.default)
+      const Components = ref.resolved.matched.map(r => r.components.default)
 
-      return Components.filter((Component) => typeof Component === 'function' && !Component.options && !Component.__prefetched)
+      return Components.filter(Component => typeof Component === 'function' && !Component.options && !Component.__prefetched)
     },
     prefetch() {
       if (!this.canPrefetch()) {
@@ -94,7 +94,7 @@ export default {
     }<% if (router.linkPrefetchedClass) { %>,
     addPrefetchedClass() {
       if (this.prefetchedClass !== 'false') {
-        this.$el.className += (this.$el.className + ' ' + this.prefetchedClass).trim()
+        this.$el.className = (this.$el.className + ' ' + this.prefetchedClass).trim()
       }
     }<% } %>
   }

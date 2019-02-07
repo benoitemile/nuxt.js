@@ -17,6 +17,9 @@ const isModernBrowser = (ua) => {
   }
   const { browser } = UAParser(ua)
   const browserVersion = semver.coerce(browser.version)
+  if (!browserVersion) {
+    return false
+  }
   return modernBrowsers[browser.name] && semver.gte(browserVersion, modernBrowsers[browser.name])
 }
 
@@ -43,7 +46,7 @@ const detectModernBrowser = ({ socket = {}, headers }) => {
 
 const setModernMode = (req, options) => {
   const { socket = {} } = req
-  const isModernBrowser = socket.isModernBrowser
+  const { isModernBrowser } = socket
   if (options.modern === 'server') {
     req.modernMode = isModernBrowser
   }

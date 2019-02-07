@@ -6,7 +6,10 @@ export default {
   srcDir: __dirname,
   server: {
     port: 8000,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    timing: {
+      total: true
+    }
   },
   router: {
     base: '/test/',
@@ -37,6 +40,7 @@ export default {
   extensions: 'ts',
   plugins: [
     '~/plugins/test',
+    '~/plugins/doubled',
     { src: '~/plugins/test.plugin', mode: 'abc' },
     '~/plugins/test.client',
     '~/plugins/test.server',
@@ -80,7 +84,7 @@ export default {
       })
     }
   },
-  css: [{ src: '~/assets/app.pcss' }],
+  css: [{ src: '~/assets/app' }],
   render: {
     csp: true,
     http2: {

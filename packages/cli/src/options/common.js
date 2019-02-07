@@ -1,3 +1,4 @@
+import { defaultNuxtConfigFile } from '@nuxt/config'
 import { normalizeArg } from '../utils'
 
 export default {
@@ -14,8 +15,8 @@ export default {
   'config-file': {
     alias: 'c',
     type: 'string',
-    default: 'nuxt.config.js',
-    description: 'Path to Nuxt.js config file (default: `nuxt.config.js`)'
+    default: defaultNuxtConfigFile,
+    description: `Path to Nuxt.js config file (default: \`${defaultNuxtConfigFile}\`)`
   },
   modern: {
     alias: 'm',
@@ -26,6 +27,12 @@ export default {
         options.modern = normalizeArg(argv.modern)
       }
     }
+  },
+  // TODO: Change this to default: true in Nuxt 3
+  'force-exit': {
+    type: 'boolean',
+    default: false,
+    description: 'Force Nuxt.js to exit after the command has finished (this option has no effect on commands which start a server)'
   },
   version: {
     alias: 'v',

@@ -22,14 +22,11 @@ import NuxtLink from './components/nuxt-link.<%= router.prefetchLinks ? "client"
 Vue.component(NuxtLink.name, NuxtLink)
 Vue.component('NLink', NuxtLink)
 
-const noopData = () => { return {} }
-const noopFetch = () => {}
-
 // Global shared references
 let _lastPaths = []
 let app
 let router
-<% if (store) { %>let store<% } %>
+<% if (store) { %>let store<%= isTest ? '// eslint-disable-line no-unused-vars' : '' %><% } %>
 
 // Try to rehydrate SSR data from window
 const NUXT = window.<%= globals.context %> || {}
@@ -150,8 +147,8 @@ async function loadAsyncComponents(to, from, next) {
     <% } %>
     // Call next()
     next()
-  } catch (err) {
-    err = err || {}
+  } catch (error) {
+    const err = error || {}
     const statusCode = err.statusCode || err.status || (err.response && err.response.status) || 500
     const message = err.message || ''
 
@@ -163,7 +160,7 @@ async function loadAsyncComponents(to, from, next) {
     }
 
     this.error({ statusCode, message })
-    this.$nuxt.$emit('routeChanged', to, from, err)
+    this.<%= globals.nuxt %>.$emit('routeChanged', to, from, err)
     next()
   }
 }
@@ -199,8 +196,9 @@ function callMiddleware(Components, context, layout) {
   // If layout is undefined, only call global middleware
   if (typeof layout !== 'undefined') {
     midd = [] // Exclude global middleware if layout defined (already called before)
-    if (layout.middleware) {
-      midd = midd.concat(layout.middleware)
+    layout = sanitizeComponent(layout)
+    if (layout.options.middleware) {
+      midd = midd.concat(layout.options.middleware)
     }
     Components.forEach((Component) => {
       if (Component.options.middleware) {
@@ -524,6 +522,9 @@ function nuxtReady(_app) {
 }
 
 <% if (isDev) { %>
+const noopData = () => { return {} }
+const noopFetch = () => {}
+
 // Special hot reload with asyncData(context)
 function getNuxtChildComponents($parent, $components = []) {
   $parent.$children.forEach(($child) => {

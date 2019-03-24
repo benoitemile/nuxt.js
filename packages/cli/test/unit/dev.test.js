@@ -6,7 +6,6 @@ describe('dev', () => {
 
   beforeAll(async () => {
     dev = await import('../../src/commands/dev').then(m => m.default)
-    // TODO: Below spyOn can be removed in v3 when force-exit is default false
     jest.spyOn(utils, 'forceExit').mockImplementation(() => {})
   })
 
@@ -52,7 +51,7 @@ describe('dev', () => {
     // Test error on second build so we cover oldInstance stuff
     const builder = new Builder()
     builder.nuxt = new Nuxt()
-    Builder.prototype.build = jest.fn().mockImplementationOnce(() => Promise.reject(new Error('Build Error')))
+    Builder.prototype.build = () => { throw new Error('Build Error') }
     await Nuxt.fileRestartHook(builder)
 
     expect(Nuxt.prototype.close).toHaveBeenCalled()
@@ -106,5 +105,36 @@ describe('dev', () => {
     await NuxtCommand.from(dev).run()
 
     expect(consola.error).toHaveBeenCalledWith(new Error('Listen Error'))
+  })
+
+  test('dev doesnt force-exit by default', async () => {
+    mockNuxt()
+    mockBuilder()
+
+    const cmd = NuxtCommand.from(dev, ['dev', '.'])
+    await cmd.run()
+
+    expect(utils.forceExit).not.toHaveBeenCalled()
+  })
+
+  test('dev can set force exit explicitly', async () => {
+    mockNuxt()
+    mockBuilder()
+
+    const cmd = NuxtCommand.from(dev, ['dev', '.', '--force-exit'])
+    await cmd.run()
+
+    expect(utils.forceExit).toHaveBeenCalledTimes(1)
+    expect(utils.forceExit).toHaveBeenCalledWith('dev', false)
+  })
+
+  test('dev can disable force exit explicitly', async () => {
+    mockNuxt()
+    mockBuilder()
+
+    const cmd = NuxtCommand.from(dev, ['dev', '.', '--no-force-exit'])
+    await cmd.run()
+
+    expect(utils.forceExit).not.toHaveBeenCalled()
   })
 })

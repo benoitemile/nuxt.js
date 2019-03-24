@@ -3,11 +3,12 @@ import Router from 'vue-router'
 import { interopDefault } from './utils'<%= isTest ? '// eslint-disable-line no-unused-vars' : '' %>
 
 <% function recursiveRoutes(routes, tab, components, indentCount) {
-  let res = '', resMap = ''
+  let res = ''
   const baseIndent = tab.repeat(indentCount)
   const firstIndent = '\n' + tab.repeat(indentCount + 1)
   const nextIndent = ',' + firstIndent
   routes.forEach((route, i) => {
+    let resMap = ''
     // If need to handle named views
     if (route.components) {
       let _name = '_' + hash(route.components.default)
@@ -86,7 +87,21 @@ Vue.use(Router)
 const scrollBehavior = <%= serializeFunction(router.scrollBehavior) %>
 <% } else { %>
 if (process.client) {
-  window.history.scrollRestoration = 'manual'
+  if ('scrollRestoration' in window.history) {
+    window.history.scrollRestoration = 'manual'
+
+    // reset scrollRestoration to auto when leaving page, allowing page reload
+    // and back-navigation from other pages to use the browser to restore the
+    // scrolling position.
+    window.addEventListener('beforeunload', () => {
+      window.history.scrollRestoration = 'auto'
+    })
+
+    // Setting scrollRestoration to manual again when returning to this page.
+    window.addEventListener('load', () => {
+      window.history.scrollRestoration = 'manual'
+    })
+  }
 }
 const scrollBehavior = function (to, from, savedPosition) {
   // if the returned position is falsy or an empty object,
@@ -139,7 +154,7 @@ const scrollBehavior = function (to, from, savedPosition) {
 export function createRouter() {
   return new Router({
     mode: '<%= router.mode %>',
-    base: '<%= router.base %>',
+    base: decodeURI('<%= router.base %>'),
     linkActiveClass: '<%= router.linkActiveClass %>',
     linkExactActiveClass: '<%= router.linkExactActiveClass %>',
     scrollBehavior,

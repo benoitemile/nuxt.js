@@ -46,8 +46,7 @@ export default class Builder {
     this.supportedExtensions = ['vue', 'js', 'ts', 'tsx']
 
     // Helper to resolve build paths
-    this.relativeToBuild = (...args) =>
-      relativeTo(this.options.buildDir, ...args)
+    this.relativeToBuild = (...args) => relativeTo(this.options.buildDir, ...args)
 
     this._buildStatus = STATUS.INITIAL
 
@@ -76,12 +75,9 @@ export default class Builder {
       this.template = this.nuxt.resolver.requireModule(this.template).template
     }
 
-    // if(!this.options.dev) {
-    // TODO: enable again when unsafe concern resolved.(common/options.js:42)
-    // this.nuxt.hook('build:done', () => this.generateConfig())
-    // }
-
+    // Create a new bundle builder
     this.bundleBuilder = this.getBundleBuilder(bundleBuilder)
+
     this.ignore = new Ignore({
       rootDir: this.options.srcDir
     })
@@ -226,7 +222,7 @@ export default class Builder {
         'Using npm:\n',
         `npm i ${dependencyFixes.join(' ')}\n`
       )
-      throw new Error('Missing Template Dependencies')
+      throw new Error('Missing App Dependencies')
     }
   }
 
@@ -258,6 +254,8 @@ export default class Builder {
   }
 
   normalizePlugins() {
+    const modes = ['client', 'server']
+    const modePattern = new RegExp(`\\.(${modes.join('|')})(\\.\\w+)?$`)
     return uniqBy(
       this.options.plugins.map((p) => {
         if (typeof p === 'string') {
@@ -272,6 +270,11 @@ export default class Builder {
           p.mode = 'client'
         } else if (p.mode === undefined) {
           p.mode = 'all'
+          p.src.replace(modePattern, (_, mode) => {
+            if (modes.includes(mode)) {
+              p.mode = mode
+            }
+          })
         } else if (!['client', 'server', 'all'].includes(p.mode)) {
           consola.warn(`Invalid plugin mode (server/client/all): '${p.mode}'. Falling back to 'all'`)
           p.mode = 'all'
@@ -390,21 +393,23 @@ export default class Builder {
 
   async resolveStore({ templateVars, templateFiles }) {
     // Add store if needed
-    if (this.options.store) {
-      templateVars.storeModules = (await this.resolveRelative(this.options.dir.store))
-        .sort(({ src: p1 }, { src: p2 }) => {
-          // modules are sorted from low to high priority (for overwriting properties)
-          let res = p1.split('/').length - p2.split('/').length
-          if (res === 0 && p1.includes('/index.')) {
-            res = -1
-          } else if (res === 0 && p2.includes('/index.')) {
-            res = 1
-          }
-          return res
-        })
-
-      templateFiles.push('store.js')
+    if (!this.options.store) {
+      return
     }
+
+    templateVars.storeModules = (await this.resolveRelative(this.options.dir.store))
+      .sort(({ src: p1 }, { src: p2 }) => {
+        // modules are sorted from low to high priority (for overwriting properties)
+        let res = p1.split('/').length - p2.split('/').length
+        if (res === 0 && p1.includes('/index.')) {
+          res = -1
+        } else if (res === 0 && p2.includes('/index.')) {
+          res = 1
+        }
+        return res
+      })
+
+    templateFiles.push('store.js')
   }
 
   async resolveMiddleware({ templateVars }) {
@@ -452,41 +457,43 @@ export default class Builder {
   }
 
   async resolveLoadingIndicator({ templateFiles }) {
-    if (this.options.loadingIndicator.name) {
-      let indicatorPath = path.resolve(
-        this.template.dir,
-        'views/loading',
-        this.options.loadingIndicator.name + '.html'
+    if (!this.options.loadingIndicator.name) {
+      return
+    }
+    let indicatorPath = path.resolve(
+      this.template.dir,
+      'views/loading',
+      this.options.loadingIndicator.name + '.html'
+    )
+
+    let customIndicator = false
+    if (!await fsExtra.exists(indicatorPath)) {
+      indicatorPath = this.nuxt.resolver.resolveAlias(
+        this.options.loadingIndicator.name
       )
 
-      let customIndicator = false
-      if (!await fsExtra.exists(indicatorPath)) {
-        indicatorPath = this.nuxt.resolver.resolveAlias(
-          this.options.loadingIndicator.name
-        )
-
-        if (await fsExtra.exists(indicatorPath)) {
-          customIndicator = true
-        } else {
-          indicatorPath = null
-        }
-      }
-
-      if (indicatorPath) {
-        templateFiles.push({
-          src: indicatorPath,
-          dst: 'loading.html',
-          custom: customIndicator,
-          options: this.options.loadingIndicator
-        })
+      if (await fsExtra.exists(indicatorPath)) {
+        customIndicator = true
       } else {
-        consola.error(
-          `Could not fetch loading indicator: ${
-            this.options.loadingIndicator.name
-          }`
-        )
+        indicatorPath = null
       }
     }
+
+    if (!indicatorPath) {
+      consola.error(
+        `Could not fetch loading indicator: ${
+          this.options.loadingIndicator.name
+        }`
+      )
+      return
+    }
+
+    templateFiles.push({
+      src: indicatorPath,
+      dst: 'loading.html',
+      custom: customIndicator,
+      options: this.options.loadingIndicator
+    })
   }
 
   async compileTemplates(templateContext) {
@@ -555,15 +562,6 @@ export default class Builder {
           additional: '\n' + pluginFiles.map(x => `- ${x}`).join('\n')
         })
       }
-
-      const modes = ['client', 'server']
-      const modePattern = new RegExp(`\\.(${modes.join('|')})\\.\\w+$`)
-      pluginFiles[0].replace(modePattern, (_, mode) => {
-        // mode in nuxt.config has higher priority
-        if (p.mode === 'all' && modes.includes(mode)) {
-          p.mode = mode
-        }
-      })
 
       p.src = this.relativeToBuild(p.src)
     }))
